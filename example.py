@@ -1,4 +1,4 @@
-from .dagger import *
+from dagger.dagger import *
 
 @Task
 def f(n):
