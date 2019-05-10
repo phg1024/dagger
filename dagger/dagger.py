@@ -129,10 +129,10 @@ class TaskDAG(object):
         if verbose:
             total_execution_time = 0
             for name, task in self.tasks.items():
-                print('[task] {} {}'.format(task.task.func.__name__, name))
-                print('output: {}'.format(task.result))
-                print("start: {}".format(task.t_start))
-                print("end: {}".format(task.t_end))
-                print("elapsed: {}".format(task.elapsed))
+                print(f'[task] {task.task.func.__name__,} { name}')
+                print(f'output: {task.result}')
+                print(f"start: {task.t_start}")
+                print(f"end: {task.t_end}")
+                print(f"elapsed: {task.elapsed}")
                 total_execution_time += task.elapsed
             print(f'CPU wall time: {total_execution_time} seconds')
