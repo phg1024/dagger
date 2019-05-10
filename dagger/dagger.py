@@ -3,7 +3,7 @@ import functools
 import time
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
-import contextlib
+from .utils import timed
 
 class Task(object):
   def __init__(self, func):
@@ -22,13 +22,6 @@ class Status(Enum):
   Running = 1
   Finished = 2
  
-@contextlib.contextmanager
-def timed(item):
-  t0 = time.time()
-  yield
-  t1 = time.time()
-  print('Time cost for {} is {} seconds'.format(item, t1 - t0))
-
 class TaskNode(object):
   def __init__(self, name, task, inputs, deps):
     self.name = name
@@ -68,19 +61,24 @@ class TaskNode(object):
     return f'{str(self.task)}, {self.inputs}'
 
 class TaskDAG(object):
-  def __init__(self):
+  def __init__(self, verbose=False):
     self.tasks = {}
+    self.verbose = verbose
   
   def add(self, name: str, task: Task, deps: List[str] = [], inputs=([], {})):
     assert isinstance(task, Task), 'You can only add Task instance to the DAG'
     assert name not in self.tasks
-    print('Adding', task)
+    if self.verbose:
+      print('Adding', task)
     self.tasks[name] = TaskNode(name, task, inputs, deps)
+    if self.verbose:
+      print('All tasks:', self.tasks)
 
-    print('All tasks:', self.tasks)
+  def execute(self, verbose=None):
+    if verbose is None:
+      verbose = self.verbose
 
-  def execute(self, verbose=False):
-    with timed('DAG execution'):
+    with timed('DAG execution', verbose=verbose):
       pool = ThreadPoolExecutor(3)
       
       while True:

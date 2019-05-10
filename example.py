@@ -1,5 +1,7 @@
-from dagger.dagger import Task, TaskDAG, timed
+from dagger.dagger import Task, TaskDAG
+from dagger.utils import timed
 import time
+
 
 @Task
 def f(n):
@@ -20,13 +22,13 @@ def h(a, b):
 
 if __name__ == '__main__':
   with timed('DAG execution') as t:
-    dag = TaskDAG()
+    dag = TaskDAG(verbose=False)
     dag.add('f1', f, inputs=([100], {}))
     dag.add('f2', f, inputs=([200], {}))
     dag.add('f3', f, inputs=([200], {}))
     dag.add('g', g, deps=['h', 'f2', 'f3'])
     dag.add('h', h, deps=['f1', 'f2'])
-    dag.execute(verbose=True)
+    dag.execute()
 
   with timed("sequential execution") as t:
     r1 = f(100)
