@@ -1,4 +1,5 @@
-from dagger.dagger import *
+from dagger.dagger import Task, TaskDAG, timed
+import time
 
 @Task
 def f(n):
