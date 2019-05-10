@@ -1,7 +1,7 @@
 # dagger
-A poor man's DAG based task scheduler
+A poor man's DAG based task scheduler, providing minmal support for workflow creation and basic task scheduling (only greedy scheduling is supported for now).
 
-## Example
+## Usage
 Any regular python function can be turned into a task with the `Task` decorator:
 ```
 @Task
