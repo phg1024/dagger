@@ -8,4 +8,4 @@ def timed(item, verbose=True):
     yield
     t1 = time.time()
     if verbose:
-        print('Time cost for {} is {} seconds'.format(item, t1 - t0))
+        print(f'Time cost for {time} is {t1 - t0} seconds')
