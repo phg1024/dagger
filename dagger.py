@@ -79,7 +79,7 @@ class TaskDAG(object):
 
     print('All tasks:', self.tasks)
 
-  def execute(self):
+  def execute(self, verbose=False):
     with timed('DAG execution'):
       pool = ThreadPoolExecutor(3)
       
@@ -99,7 +99,8 @@ class TaskDAG(object):
               dres.append(self.tasks[d].result)
           
           if can_start:
-            print('Starting', k, '@', time.time())
+            if verbose:
+              print('Starting', k, '@', time.time())
             task.start(pool, dres)
         
         # check all the running tasks and update status if needed
@@ -109,7 +110,8 @@ class TaskDAG(object):
             continue
 
           if task.done():
-            print(k, 'finished @', time.time())
+            if verbose:
+              print(k, 'finished @', time.time())
             task.stop()
           
           if not task.finished():
@@ -119,15 +121,16 @@ class TaskDAG(object):
           break
 
         time.sleep(0.005)
-    
-      print('done')
+      if verbose:
+        print('done')
 
-    total_execution_time = 0
-    for name, task in self.tasks.items():
-      print('[task] {} {}'.format(task.task.func.__name__, name))
-      print('output: {}'.format(task.result))
-      print("start: {}".format(task.t_start))
-      print("end: {}".format(task.t_end))
-      print("elapsed: {}".format(task.elapsed))
-      total_execution_time += task.elapsed
-    print(f'CPU wall time: {total_execution_time} seconds')
+    if verbose:
+      total_execution_time = 0
+      for name, task in self.tasks.items():
+        print('[task] {} {}'.format(task.task.func.__name__, name))
+        print('output: {}'.format(task.result))
+        print("start: {}".format(task.t_start))
+        print("end: {}".format(task.t_end))
+        print("elapsed: {}".format(task.elapsed))
+        total_execution_time += task.elapsed
+      print(f'CPU wall time: {total_execution_time} seconds')
