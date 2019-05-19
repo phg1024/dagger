@@ -30,6 +30,7 @@ class TaskNode(object):
         self.name = name
         self.task = task
         self.deps = deps
+        self.unfinished_deps = len(deps)
         self.inputs = inputs
         self.status = Status.NotStarted
         self.t_start = None
@@ -61,13 +62,17 @@ class TaskNode(object):
         return self.status == Status.Finished
 
     def __repr__(self):
-        return f'{str(self.task)}, {self.inputs}'
+        return f'{self.name}, {str(self.task)}, {self.inputs}'
 
 
 class TaskDAG(object):
     def __init__(self, verbose=False):
         self.tasks = {}
         self.verbose = verbose
+        self.pending_tasks = set()
+        self.current_tasks = set()
+        self.dag = {}
+        self.launch_queue = []
 
     def add(self, name: str, task: Task, deps: List[str] = [], inputs=([], {})):
         assert isinstance(task, Task), 'You can only add Task instance to the DAG'
@@ -78,6 +83,60 @@ class TaskDAG(object):
         if self.verbose:
             print('All tasks:', self.tasks)
 
+    def _build_dag(self):
+        # dag is actually just an adjacency list
+        self.dag = {name: set() for name in self.tasks.keys()}
+
+        for name, task in self.tasks.items():
+            for dep in task.deps:
+                self.dag[dep].add(name)
+
+    def _launch_tasks(self, pool, verbose=False):
+        ready_tasks = []
+        finished_tasks = []
+        # Process the launch queue
+        if verbose:
+            print('Current launch queue:', self.launch_queue)
+        for task in self.launch_queue:
+            if verbose:
+                print(f'Checking {task.name} ...')
+            if task.done():
+                if verbose:
+                    print(task.name, 'finished @', time.time())
+                task.stop()
+
+                # check if one of its children task can be added to the launch stack
+                for child in self.dag[task.name]:
+                    child_task = self.tasks[child]
+                    child_task.unfinished_deps -= 1
+                    if child_task.unfinished_deps == 0:
+                        ready_tasks.append(child_task)
+
+                finished_tasks.append(task.name)
+                continue
+            elif verbose:
+                print(f'{task.name} is not done.')
+
+            can_start = not task.started()
+
+            # gather the status from dependent tasks
+            dres = []
+            for d in task.deps:
+                if not self.tasks[d].finished():
+                    can_start = False
+                else:
+                    dres.append(self.tasks[d].result)
+
+            if can_start:
+                if verbose:
+                    print('Starting', task.name, '@', time.time())
+                task.start(pool, dres)
+
+        self.launch_queue = [x for x in self.launch_queue if x.name not in finished_tasks]
+        self.launch_queue.extend(ready_tasks)
+
+        return len(self.launch_queue) > 0
+
     def execute(self, verbose=None):
         if verbose is None:
             verbose = self.verbose
@@ -85,41 +144,13 @@ class TaskDAG(object):
         with timed('DAG execution', verbose=verbose):
             pool = ThreadPoolExecutor(3)
 
+            self._build_dag()
+
+            # The initial launch stack
+            self.launch_queue = [task for _, task in self.tasks.items() if task.unfinished_deps == 0]
+
             while True:
-                for k, task in self.tasks.items():
-                    if task.finished():
-                        continue
-
-                    can_start = not task.started()
-
-                    # gather the status from dependent tasks
-                    dres = []
-                    for d in task.deps:
-                        if not self.tasks[d].finished():
-                            can_start = False
-                        else:
-                            dres.append(self.tasks[d].result)
-
-                    if can_start:
-                        if verbose:
-                            print('Starting', k, '@', time.time())
-                        task.start(pool, dres)
-
-                # check all the running tasks and update status if needed
-                all_done = True
-                for k, task in self.tasks.items():
-                    if task.finished():
-                        continue
-
-                    if task.done():
-                        if verbose:
-                            print(k, 'finished @', time.time())
-                        task.stop()
-
-                    if not task.finished():
-                        all_done = False
-
-                if all_done:
+                if not self._launch_tasks(pool, verbose):
                     break
 
                 time.sleep(0.005)
@@ -129,7 +160,7 @@ class TaskDAG(object):
         if verbose:
             total_execution_time = 0
             for name, task in self.tasks.items():
-                print(f'[task] {task.task.func.__name__,} { name}')
+                print(f'[task] {task.task.func.__name__,} {name}')
                 print(f'output: {task.result}')
                 print(f"start: {task.t_start}")
                 print(f"end: {task.t_end}")

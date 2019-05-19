@@ -1,11 +1,11 @@
 from dagger.dagger import Task, TaskDAG
 from dagger.utils import timed
 import time
-
+import random
 
 @Task
 def f(n):
-    time.sleep(0.5)
+    time.sleep(0.5 + random.random() * 0.05)
     total = 0
     for i in range(n):
         total += n * n
@@ -20,6 +20,7 @@ def g(*args):
 
 @Task
 def h(a, b):
+    time.sleep(0.1)
     return a / b
 
 
@@ -28,9 +29,11 @@ if __name__ == '__main__':
         dag = TaskDAG(verbose=False)
         dag.add('f1', f, inputs=([100], {}))
         dag.add('f2', f, inputs=([200], {}))
-        dag.add('f3', f, inputs=([200], {}))
-        dag.add('g', g, deps=['h', 'f2', 'f3'])
+        dag.add('f3', f, inputs=([50], {}))
+        dag.add('g1', g, deps=['h', 'f2', 'f3'])
         dag.add('h', h, deps=['f1', 'f2'])
+        dag.add('g2', g, deps=['f1', 'f3'])
+        dag.add('g3', g, deps=['f2', 'f3'])
         dag.execute()
 
     with timed("sequential execution") as t:
